@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server"
 import { google } from "googleapis"
+import { NextResponse } from "next/server"
 
 export async function POST(req: Request) {
   try {
@@ -11,47 +11,31 @@ export async function POST(req: Request) {
     const domaine = formData.get("domaine") as string
     const problem = formData.get("problem") as string
     const priorite = formData.get("priorite") as string
-    const photo = formData.get("photo") as File | null
 
-    // Connexion Google Sheets
     const auth = new google.auth.GoogleAuth({
-      keyFile: "./credentials/vbproject-469819-04a999422018.json",
+      credentials: {
+        client_email: process.env.GOOGLE_CLIENT_EMAIL,
+        private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
+      },
+      projectId: process.env.GOOGLE_PROJECT_ID,
       scopes: ["https://www.googleapis.com/auth/spreadsheets"],
     })
+
     const sheets = google.sheets({ version: "v4", auth })
+    const spreadsheetId = process.env.GOOGLE_SHEET_ID!
 
-    const spreadsheetId = "16ar-ieh5ghpEKlJrx0ZW1Ghc2icAdJjC94WiZCFUFNc"
-
-    // Insérer une nouvelle ligne
     await sheets.spreadsheets.values.append({
       spreadsheetId,
       range: "Feuille1!A:G",
       valueInputOption: "USER_ENTERED",
       requestBody: {
-        values: [
-          [
-            new Date().toLocaleString("fr-FR"),
-            user,
-            localisation,
-            roomNumber,
-            domaine,
-            problem,
-            priorite,
-            photo ? photo.name : "",
-          ],
-        ],
+        values: [[user, localisation, roomNumber, domaine, problem, priorite]],
       },
     })
 
-    return NextResponse.json({
-      success: true,
-      message: "✅ Incident enregistré dans Google Sheets",
-    })
+    return NextResponse.json({ success: true })
   } catch (err: any) {
     console.error("Erreur API:", err)
-    return NextResponse.json(
-      { success: false, error: err.message },
-      { status: 500 }
-    )
+    return NextResponse.json({ success: false, error: err.message }, { status: 500 })
   }
 }
